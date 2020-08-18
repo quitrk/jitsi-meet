@@ -52,7 +52,9 @@ import {
     notifyCameraError,
     notifyMicError,
     setAudioOutputDeviceId,
-    updateDeviceList
+    updateDeviceList,
+    addDeviceListChangeListener,
+    removeDeviceListChangeListener
 } from './react/features/base/devices';
 import {
     isFatalJitsiConnectionError,
@@ -2500,9 +2502,7 @@ export default {
         // We also do not care about device change, which happens
         // on resume after suspending PC.
         if (this.deviceChangeListener) {
-            JitsiMeetJS.mediaDevices.removeEventListener(
-                JitsiMediaDevicesEvents.DEVICE_LIST_CHANGED,
-                this.deviceChangeListener);
+            removeDeviceListChangeListener(this.deviceChangeListener);
         }
 
         this.localVideo = null;
@@ -2555,34 +2555,25 @@ export default {
      * @returns {Promise}
      */
     _initDeviceList(setDeviceListChangeHandler = false) {
-        const { mediaDevices } = JitsiMeetJS;
-
-        if (mediaDevices.isDeviceListAvailable()
-                && mediaDevices.isDeviceChangeAvailable()) {
-            if (setDeviceListChangeHandler) {
-                this.deviceChangeListener = devices =>
-                    window.setTimeout(() => this._onDeviceListChanged(devices), 0);
-                mediaDevices.addEventListener(
-                    JitsiMediaDevicesEvents.DEVICE_LIST_CHANGED,
-                    this.deviceChangeListener);
-            }
-
-            const { dispatch } = APP.store;
-
-            return dispatch(getAvailableDevices())
-                .then(devices => {
-                    // Ugly way to synchronize real device IDs with local
-                    // storage and settings menu. This is a workaround until
-                    // getConstraints() method will be implemented in browsers.
-                    this._updateAudioDeviceId();
-
-                    this._updateVideoDeviceId();
-
-                    APP.UI.onAvailableDevicesChanged(devices);
-                });
+        if (setDeviceListChangeHandler) {
+            this.deviceChangeListener = devices =>
+                window.setTimeout(() => this._onDeviceListChanged(devices), 0);
+            addDeviceListChangeListener(this.deviceChangeListener);
         }
 
-        return Promise.resolve();
+        const { dispatch } = APP.store;
+
+        return dispatch(getAvailableDevices())
+            .then(devices => {
+                // Ugly way to synchronize real device IDs with local
+                // storage and settings menu. This is a workaround until
+                // getConstraints() method will be implemented in browsers.
+                this._updateAudioDeviceId();
+
+                this._updateVideoDeviceId();
+
+                APP.UI.onAvailableDevicesChanged(devices);
+            });
     },
 
     /**
@@ -2827,9 +2818,7 @@ export default {
 
         // Remove unnecessary event listeners from firing callbacks.
         if (this.deviceChangeListener) {
-            JitsiMeetJS.mediaDevices.removeEventListener(
-                JitsiMediaDevicesEvents.DEVICE_LIST_CHANGED,
-                this.deviceChangeListener);
+            removeDeviceListChangeListener(this.deviceChangeListener);
         }
 
         APP.UI.removeAllListeners();

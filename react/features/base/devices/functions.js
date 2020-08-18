@@ -1,6 +1,6 @@
 // @flow
 
-import JitsiMeetJS from '../lib-jitsi-meet';
+import JitsiMeetJS, { JitsiMediaDevicesEvents } from '../lib-jitsi-meet';
 import { updateSettings } from '../settings';
 import { parseURLParams } from '../util';
 
@@ -286,4 +286,35 @@ export function setAudioOutputDeviceId(
 
             return dispatch(updateSettings(newSettings));
         });
+}
+
+/**
+ * Adds handling for device list changes.
+ *
+ * @param {Function} listener - Listener function that needs to be added.
+ *
+ * @returns {Function}
+ */
+export function addDeviceListChangeListener(listener) {
+    const { mediaDevices } = JitsiMeetJS;
+
+    if (mediaDevices.isDeviceListAvailable()
+        && mediaDevices.isDeviceChangeAvailable()) {
+        mediaDevices.addEventListener(
+            JitsiMediaDevicesEvents.DEVICE_LIST_CHANGED, listener
+        );
+    }
+}
+
+/**
+ * Removes handling for device list changes.
+ *
+ * @param {Function} listener - Listener function that needs to be removed.
+ *
+ * @returns {void}
+ */
+export function removeDeviceListChangeListener(listener) {
+    JitsiMeetJS.mediaDevices.removeEventListener(
+        JitsiMediaDevicesEvents.DEVICE_LIST_CHANGED, listener
+    );
 }
